@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Archer Playable</title>
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background: #000; font-family: sans-serif; touch-action: none; }
+        #game { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+        .scene { position: absolute; inset: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
+        .hidden { display: none !important; }
+        .bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+        /* Wheel */
+        #wheel-wrapper { position: relative; width: 85vw; height: 85vw; margin-top: -15vh; z-index: 5; }
+        #wheel-container { position: relative; width: 100%; height: 100%; will-change: transform; }
+        #wheel { width: 100%; height: 100%; display: block; }
+        #pointer { position: absolute; width: 12%; left: 50%; top: -5%; transform: translateX(-50%); z-index: 10; }
+
+        /* Тятива (PNG) - Прив'язка до краю */
+        .string { 
+            position: absolute; 
+            z-index: 14; /* Було 4, тепер 14 (під соломою, яка має 15) */
+            pointer-events: none; 
+            transform-origin: 0% 50%; 
+            height: 24px; 
+            will-change: width, transform;
+        }
+
+        .hay { 
+            position: absolute; 
+            width: 22vw; 
+            bottom: 16%; 
+            transition: transform .2s ease; 
+            z-index: 15; /* Солома ПЕРЕКРИВАЄ початок лінії */
+        }
+
+        /* Archer */
+        #arrow-area { position: absolute; width: 35vw; height: 35vw; left: 50%; bottom: 18%; transform: translateX(-50%); z-index: 10; }
+        #arrow { width: 100%; height: 100%; object-fit: contain; will-change: transform; cursor: pointer; }
+        .stuck-arrow { position: absolute; width: 15vw; left: 50%; top: 50%; transform-origin: 50% 0%; z-index: 6; }
+
+        #hay-left { left: 5%; transform: rotate(0deg); } 
+        #hay-right { right: 5%; transform: rotate(180deg); }
+
+        /* Icons */
+        .avatar { 
+            position: absolute; 
+            width: 22vw; 
+            height: 22vw; 
+            bottom: 5vh; 
+            border-radius: 50%; 
+            border: 3px solid #fff; 
+            overflow: hidden; 
+            z-index: 20; 
+            /* Додаємо плавність для трансформацій */
+            transition: transform 0.2s ease-out; 
+            will-change: transform;
+        }        .left-main { left: 8%; }
+                .right-main { right: 8%; }
+
+        /* Animations */
+        @keyframes spinContinuous { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .spinning-continuous { animation: spinContinuous 1s linear infinite; }
+        @keyframes ctaPulse { 0%, 100% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.06); } }
+
+        #flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 100; transition: opacity 0.2s; }
+    </style>
+</head>
+<body>
+<audio id="bg-music" src="assets/background.mp3" loop prelaod="auto"></audio>
+<div id="game">
+    <div id="wheel-scene" class="scene">
+        <img class="bg" src="assets/bg.png" />
+        <img id="string-left" class="string" src="assets/line2.png" />
+        <img id="string-right" class="string" src="assets/line1.png" />
+
+        <div id="wheel-wrapper">
+            <div id="wheel-container">
+                <img id="wheel" src="assets/wheel.png" />
+                <div id="stuck-arrows-layer" style="position: absolute; inset: 0;"></div>
+            </div>
+        </div>
+
+        <img id="hay-left" class="hay" src="assets/hay.png" />
+        <img id="hay-right" class="hay" src="assets/hay.png" />
+
+        <div id="arrow-area"><img id="arrow" src="assets/arrow.png" /></div>
+
+        <div id="icon-left" class="avatar left-main"><img id="img-left" src="assets/avatar1.png" style="width:100%;height:100%;object-fit:cover;" /></div>
+        <div id="icon-right" class="avatar right-main"><img id="img-right" src="assets/avatar2.png" style="width:100%;height:100%;object-fit:cover;" /></div>
+    </div>
+
+    <div id="reward-scene" class="scene hidden">
+        <video id="girl-animation" style="width:100%;height:100%;object-fit:cover;" 
+           playsinline muted loop preload="auto">
+        </video>
+        <img id="back-btn" src="assets/back.png" style="position:absolute;width:12vw;top:4vh;left:4vw;" onclick="resetGame()" />
+        <img id="cta-btn" src="assets/cta.webp" style="position:absolute;width:70vw;left:50%;bottom:6vh;transform:translateX(-50%);animation:ctaPulse 1s infinite;" onclick="window.open('https://your-link.com', '_blank')" />
+    </div>
+    <div id="flash"></div>
+</div>
+
+<<script>
+ const girls = {
+        mia: { animation: "assets/MiaDuath.webm", voice: new Audio("assets/mia.m4a")},
+        luna: { animation: "assets/MiaDuath.webm", voice: new Audio("assets/mia.m4a")},
+        sofia: { animation: "assets/MiaDuath.webm", voice: new Audio("assets/mia.m4a")},
+        emma: { animation: "assets/MiaDuath.webm", voice: new Audio("assets/mia.m4a") }
+    };
+
+    // Тільки одне оголошення outcomes з кутами
+    const outcomes = [
+        { id: "mia", angle: 0 },      
+        { id: "emma", angle: 90 },    
+        { id: "sofia", angle: 180 },  
+        { id: "luna", angle: 270 }    
+    ];
+
+    const allAvatars = ["assets/avatar1.png", "assets/avatar2.png", "assets/avatar3.png", "assets/avatar4.png"];
+    
+    let dragging = false, startY = 0, pullDistance = 0, spinning = false, currentRotation = 0;
+let isMusicPlaying = false;
+const bgMusic = document.getElementById("bg-music");
+    const arrow = document.getElementById("arrow");
+    const wheelContainer = document.getElementById("wheel-container");
+    const lineL = document.getElementById("string-left");
+    const lineR = document.getElementById("string-right");
+    const iconL = document.getElementById("icon-left");
+    const iconR = document.getElementById("icon-right");
+
+    // Координати змінено, щоб лінія починалася ВІД СОЛОМИ (z-index у CSS має бути 14 для ліній)
+    const anchorL = { x: window.innerWidth * 0.16, y: window.innerHeight * 0.78 };
+    const anchorR = { x: window.innerWidth * 0.84, y: window.innerHeight * 0.78 };
+
+    function updateLines() {
+        const arrowRect = arrow.getBoundingClientRect();
+        const targetX = arrowRect.left + arrowRect.width / 2;
+        const targetY = arrowRect.top + arrowRect.height * 0.82; 
+        drawPngLine(lineL, anchorL.x, anchorL.y, targetX, targetY);
+        drawPngLine(lineR, anchorR.x, anchorR.y, targetX, targetY);
+    }
+
+   function createStuckArrow(fixedAngle) {
+        const layer = document.getElementById("stuck-arrows-layer");
+        layer.innerHTML = ""; 
+        const img = document.createElement("img");
+        img.src = "assets/arrow.png";
+        img.className = "stuck-arrow";
+
+        // visualAngle = 180 означає, що стріла дивиться вниз (в центр колеса)
+        const visualAngle = 180; 
+
+        img.style.transform = `translateX(-50%) translateY(-32vw) rotate(${visualAngle}deg)`;
+        layer.appendChild(img);
+    }
+    function drawPngLine(el, x1, y1, x2, y2) {
+        const dist = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+        const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+        el.style.left = x1 + "px"; el.style.top = y1 + "px";
+        el.style.width = dist + "px";
+        el.style.transform = `rotate(${angle}deg) scaleY(1.4)`;
+    }
+
+    arrow.addEventListener("pointerdown", e => {
+        if (spinning) return;
+        if (!isMusicPlaying) {
+            bgMusic.play().catch(e => console.log("Music play blocked"));
+            isMusicPlaying = true;
+        }
+        dragging = true; startY = e.clientY;
+        wheelContainer.classList.add("spinning-continuous");
+    });
+
+    window.addEventListener("pointermove", e => {
+        if (!dragging) return;
+        pullDistance = Math.min(Math.max(0, e.clientY - startY), 120);
+        
+        arrow.style.transform = `translateY(${pullDistance}px)`;
+        document.getElementById("hay-left").style.transform = `rotate(${pullDistance / 10}deg)`;
+        document.getElementById("hay-right").style.transform = `rotate(${180 - pullDistance / 10}deg)`;
+        
+        // Плавне зменшення аватарок
+        const scaleValue = 1 - (pullDistance / 120) * 0.15;
+        iconL.style.transform = `scale(${scaleValue})`;
+        iconR.style.transform = `scale(${scaleValue})`;
+        
+        updateLines();
+    });
+
+    window.addEventListener("pointerup", () => {
+        if (!dragging) return;
+        dragging = false;
+
+        if (pullDistance > 40) {
+            fire();
+        } else {
+            // Повернення в початковий стан при скасуванні
+            arrow.style.transform = "translateY(0)";
+            wheelContainer.classList.remove("spinning-continuous");
+            iconL.style.transform = "scale(1)";
+            iconR.style.transform = "scale(1)";
+            document.getElementById("hay-left").style.transform = `rotate(0deg)`;
+            document.getElementById("hay-right").style.transform = `rotate(180deg)`;
+            updateLines();
+        }
+    });
+
+  function fire() {
+        spinning = true;
+        
+        // Повертаємо аватарки до норми
+        document.getElementById("icon-left").style.transform = "scale(1)";
+        document.getElementById("icon-right").style.transform = "scale(1)";
+
+        arrow.style.transition = "transform 0.2s ease-in";
+        arrow.style.transform = "translateY(-45vh) scale(0.6)";
+
+        // 1. Випадковий вибір сектора з текстом
+        const result = outcomes[Math.floor(Math.random() * outcomes.length)];
+        // Додаємо jitter, щоб не було ідеально в центр тексту кожен раз
+        const jitter = (Math.random() - 0.5) * 15; 
+        const targetAngle = result.angle + jitter; 
+
+        setTimeout(() => {
+            arrow.style.transition = "none";
+            arrow.style.opacity = "0";
+
+            const style = window.getComputedStyle(wheelContainer);
+            const matrix = new WebKitCSSMatrix(style.transform);
+            const currentAngle = Math.round(Math.atan2(matrix.b, matrix.a) * (180 / Math.PI));
+            
+            wheelContainer.classList.remove("spinning-continuous");
+            wheelContainer.style.transform = `rotate(${currentAngle}deg)`;
+
+            // 2. Стріла візуально втикається вгорі (0 градусів відносно екрану)
+            createStuckArrow(0); 
+
+            setTimeout(() => {
+                wheelContainer.style.transition = "transform 5s cubic-bezier(0.1, 0.45, 0.1, 1)";
+                
+                // 3. ГОЛОВНИЙ ФІКС: 
+                // baseRotation — це повні оберти, які вже зробило колесо.
+                // Додаємо 720 (2 оберти) для плавності.
+                // ВІДНІМАЄМО targetAngle, щоб саме цей сектор докрутився до стріли вгорі.
+                const baseRotation = Math.round(currentAngle / 360) * 360;
+                currentRotation = baseRotation + 720 - targetAngle;
+                
+                wheelContainer.style.transform = `rotate(${currentRotation}deg)`;
+            }, 15);
+
+            setTimeout(() => showReward(result.id), 5000);
+        }, 200);
+    }
+
+    function createStuckArrow(sectorAngle) {
+        const layer = document.getElementById("stuck-arrows-layer");
+        layer.innerHTML = ""; 
+        const img = document.createElement("img");
+        img.src = "assets/arrow.png";
+        img.className = "stuck-arrow";
+
+        // Стріла розвернута хвостом назовні, кінчиком до центру
+        const visualAngle = sectorAngle + 180; 
+
+        img.style.transform = `translateX(-50%) translateY(-32vw) rotate(${visualAngle}deg)`;
+        layer.appendChild(img);
+    }
+    function showReward(girlKey) {
+    document.getElementById("flash").style.opacity = "1";
+    bgMusic.volume = 0.2;
+    setTimeout(() => {
+        const girl = girls[girlKey];
+        const video = document.getElementById("girl-animation");
+        
+        // Встановлюємо джерело відео
+        video.src = girl.animation;
+        
+        // Приховуємо колесо, показуємо сцену нагороди
+        document.getElementById("wheel-scene").classList.add("hidden");
+        document.getElementById("reward-scene").classList.remove("hidden");
+        document.getElementById("flash").style.opacity = "0";
+
+        // Важливо: завантажуємо та запускаємо відео
+        video.load();
+        const playPromise = video.play();
+
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                // Відео почало грати успішно
+                // Якщо хочете звук саме з відео, розкоментуйте:
+                // video.muted = false; 
+            }).catch(error => {
+                console.log("Автоплей заблоковано, пробуємо ще раз при кліку", error);
+            });
+        }
+
+        // Якщо звук окремим файлом (як у вашому коді):
+        if (girl.voice) {
+            girl.voice.play().catch(e => console.log("Аудіо заблоковано"));
+        }
+    }, 200);
+}
+    function resetGame() {
+    const video = document.getElementById("girl-animation");
+    bgMusic.volume = 1.0;
+    if (bgMusic.paused) bgMusic.play();
+    video.pause();
+    video.src = ""; // Очищуємо, щоб зупинити завантаження
+    
+    spinning = false;
+    document.getElementById("stuck-arrows-layer").innerHTML = "";
+    wheelContainer.style.transition = "none";
+    wheelContainer.style.transform = `rotate(0deg)`;
+    currentRotation = 0;
+    
+    document.getElementById("reward-scene").classList.add("hidden");
+    document.getElementById("wheel-scene").classList.remove("hidden");
+    
+    updateBottomIcons();
+    arrow.style.transition = "none";
+    arrow.style.opacity = "1";
+    arrow.style.transform = "translateY(0)";
+    
+    iconL.style.transform = "scale(1)";
+    iconR.style.transform = "scale(1)";
+    
+    document.getElementById("hay-left").style.transform = `rotate(0deg)`;
+    document.getElementById("hay-right").style.transform = `rotate(180deg)`;
+    updateLines();
+}
+
+    function updateBottomIcons() {
+        let first = Math.floor(Math.random() * allAvatars.length);
+        let second;
+        do { second = Math.floor(Math.random() * allAvatars.length); } while (first === second);
+        document.getElementById("img-left").src = allAvatars[first];
+        document.getElementById("img-right").src = allAvatars[second];
+    }
+
+    window.onload = () => { updateLines(); updateBottomIcons(); };
+    
+</script>
+</body>
+</html>
