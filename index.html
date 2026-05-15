@@ -13,59 +13,86 @@
 
         /* Wheel */
         #wheel-wrapper { position: relative; width: 85vw; height: 85vw; margin-top: -15vh; z-index: 5; }
-#wheel-container { 
-    position: relative; 
-    width: 100%; 
-    height: 100%; 
-    will-change: transform; 
-    transition: transform 0s; /* По дефолту миттєво */
-}
+        #wheel-container { position: relative; width: 100%; height: 100%; will-change: transform; transition: transform 0s; }
         #wheel { width: 100%; height: 100%; display: block; }
-        #pointer { position: absolute; width: 12%; left: 50%; top: -5%; transform: translateX(-50%); z-index: 10; }
 
-        /* Тятива (PNG) - Прив'язка до краю */
-        .string { 
-            position: absolute; 
-            z-index: 14; /* Було 4, тепер 14 (під соломою, яка має 15) */
-            pointer-events: none; 
-            transform-origin: 0% 50%; 
-            height: 24px; 
-            will-change: width, transform;
-        }
-
-        .hay { 
-            position: absolute; 
-            width: 22vw; 
-            bottom: 16%; 
-            transition: transform .2s ease; 
-            z-index: 15; /* Солома ПЕРЕКРИВАЄ початок лінії */
-        }
+        /* Тятива */
+        .string { position: absolute; z-index: 14; pointer-events: none; transform-origin: 0% 50%; height: 24px; will-change: width, transform; }
+        .hay { position: absolute; width: 25vw; bottom: 16%; transition: transform .2s ease; z-index: 15; }
+        #hay-left { left: 1%; transform: rotate(0deg); } 
+        #hay-right { right: 1%; transform: rotate(180deg); }
 
         /* Archer */
         #arrow-area { position: absolute; width: 35vw; height: 35vw; left: 50%; bottom: 18%; transform: translateX(-50%); z-index: 10; }
         #arrow { width: 100%; height: 100%; object-fit: contain; will-change: transform; cursor: pointer; }
-        .stuck-arrow { position: absolute; width: 15vw; left: 50%; top: 50%; transform-origin: 50% 0%; z-index: 6; }
+        .stuck-arrow { position: absolute; width: 15vw; left: 50%; top: 50%; z-index: 6; transform-origin: center center; }
 
-        #hay-left { left: 5%; transform: rotate(0deg); } 
-        #hay-right { right: 5%; transform: rotate(180deg); }
-
-        /* Icons */
+        /* Icons (Аватари) */
         .avatar { 
             position: absolute; 
             width: 22vw; 
             height: 22vw; 
             bottom: 5vh; 
-            border-radius: 50%; 
-            border: 3px solid #fff; 
             overflow: hidden; 
             z-index: 20; 
-            /* Додаємо плавність для трансформацій */
-            transition: transform 0.2s ease-out; 
-            will-change: transform;
-        }        .left-main { left: 8%; }
-                .right-main { right: 8%; }
+        }
+        .left-main { left: 8%; }
+        .right-main { right: 8%; }
+        .avatar img { width: 100%; height: 100%; object-fit: cover; }
 
-        /* Animations */
+        /* Рука навчання */
+        #tutorial-hand {
+            position: absolute;
+            width: 15vw; /* Розмір руки */
+            height: 15vw;
+            left: 55%; /* Трохи збоку від стріли */
+            bottom: 20%;
+            z-index: 25;
+            pointer-events: none; /* Щоб рука не заважала натискати на стрілу */
+            transition: opacity 0.3s ease;
+        }
+
+        /* Анімація тяги: рука і стріла рухаються вниз-вгору */
+        @keyframes handPull {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(80px); } /* Відтягування вниз */
+            100% { transform: translateY(0); }
+        }
+
+        .hand-anim {
+            animation: handPull 1.5s ease-in-out infinite;
+        }
+
+        /* Додамо клас для анімації самої стріли під час туторіалу */
+        .arrow-tutorial-anim {
+            animation: handPull 1.5s ease-in-out infinite;
+        }
+
+        /* Початковий стан кнопки (прихована) */
+        #cta-btn { 
+            display: none; 
+            position: absolute; 
+            width: 100%; 
+            left: 50%; 
+            bottom: 40%; 
+            transform: translateX(-50%); 
+            z-index: 35; 
+        }
+
+        /* Клас для затемнення відео */
+        .video-dimmed {
+            filter: brightness(0.4) grayscale(0.3);
+            transition: filter 0.8s ease;
+        }
+
+        /* Коли кнопка має з'явитися */
+        .cta-visible {
+            display: block !important;
+            animation: ctaPulse 1s infinite;
+        }
+
+        /* UI/Animations */
+        #reward-scene video { width: 100%; height: 100%; object-fit: cover; }
         @keyframes spinContinuous { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .spinning-continuous { animation: spinContinuous 1s linear infinite; }
         @keyframes ctaPulse { 0%, 100% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.06); } }
@@ -74,7 +101,9 @@
     </style>
 </head>
 <body>
-<audio id="bg-music" src="assets/background.mp3" loop prelaod="auto"></audio>
+
+<audio id="bg-music" src="assets/background.mp3" loop preload="auto"></audio>
+
 <div id="game">
     <div id="wheel-scene" class="scene">
         <img class="bg" src="assets/bg.png" />
@@ -87,56 +116,53 @@
                 <div id="stuck-arrows-layer" style="position: absolute; inset: 0;"></div>
             </div>
         </div>
-
+        <div id="tutorial-hand" class="hand-anim">
+            <img src="assets/hand.webp" style="width: 100%; height: 100%;" />
+        </div>
         <img id="hay-left" class="hay" src="assets/hay.png" />
         <img id="hay-right" class="hay" src="assets/hay.png" />
-
         <div id="arrow-area"><img id="arrow" src="assets/arrow.png" /></div>
 
-        <div id="icon-left" class="avatar left-main"><img id="img-left" src="assets/avatar1.png" style="width:100%;height:100%;object-fit:cover;" /></div>
-        <div id="icon-right" class="avatar right-main"><img id="img-right" src="assets/avatar2.png" style="width:100%;height:100%;object-fit:cover;" /></div>
+        <div id="icon-left" class="avatar left-main"><img src="assets/avatar1.png" /></div>
+        <div id="icon-right" class="avatar right-main"><img src="assets/avatar2.png" /></div>
     </div>
 
     <div id="reward-scene" class="scene hidden">
-        <video id="girl-animation" style="width:100%;height:100%;object-fit:cover;" 
-           playsinline muted loop preload="auto">
-        </video>
-        <img id="back-btn" src="assets/back.png" style="position:absolute;width:12vw;top:4vh;left:4vw;" onclick="resetGame()" />
-        <img id="cta-btn" src="assets/cta.webp" style="position:absolute;width:70vw;left:50%;bottom:6vh;transform:translateX(-50%);animation:ctaPulse 1s infinite;" onclick="window.open('https://your-link.com', '_blank')" />
+        <video id="girl-animation" playsinline muted loop></video>
+        <img id="back-btn" src="assets/back.png" style="position:absolute;width:22vw;top:4vh;left:14vw;z-index:30; animation:ctaPulse 1s infinite;z-index:30;" onclick="resetGame()" />
+        <img id="cta-btn" src="assets/cta.webp" onclick="window.open('https://your-link.com', '_blank')" />
     </div>
+
     <div id="flash"></div>
 </div>
 
-<<script>
- const girls = {
+<script>
+    const girls = {
         mia: { animation: "assets/MiaDuath.webm", voice: new Audio("assets/mia.m4a")},
-        luna: { animation: "assets/MiaDuath.webm", voice: new Audio("assets/mia.m4a")},
-        sofia: { animation: "assets/MiaDuath.webm", voice: new Audio("assets/mia.m4a")},
-        emma: { animation: "assets/MiaDuath.webm", voice: new Audio("assets/mia.m4a") }
+        luna: { animation: "assets/MiaDauns.webm", voice: new Audio("assets/MiaDeans.m4a")},
+        sofia: { animation: "assets/MiaMilk.webm", voice: new Audio("assets/MiaMilk.m4a")},
+        emma: { animation: "assets/MiaJump.webm", voice: new Audio("assets/mia.m4a") }
     };
 
     const outcomes = [
-    { id: "mia", angle: 315 },      // Mia Spills Milk (Верх-Ліво)
-    { id: "emma", angle: 45 },      // Wild Cowgirl (Верх-Право)
-    { id: "sofia", angle: 135 },    // Reverse Cowgirl (Низ-Право)
-    { id: "luna", angle: 225 }      // Spicy Dance (Низ-Ліво)
-];
+        { id: "mia", angle: 315 },
+        { id: "emma", angle: 45 },
+        { id: "sofia", angle: 135 },
+        { id: "luna", angle: 225 }
+    ];
 
-    const allAvatars = ["assets/avatar1.png", "assets/avatar2.png", "assets/avatar3.png", "assets/avatar4.png"];
-    
-    let dragging = false, startY = 0, pullDistance = 0, spinning = false, currentRotation = 0;
-let isMusicPlaying = false;
-const bgMusic = document.getElementById("bg-music");
+    let dragging = false, spinning = false, isMusicPlaying = false, startY = 0, pullDistance = 0;
+
+    const bgMusic = document.getElementById("bg-music");
     const arrow = document.getElementById("arrow");
     const wheelContainer = document.getElementById("wheel-container");
-    const lineL = document.getElementById("string-left");
-    const lineR = document.getElementById("string-right");
     const iconL = document.getElementById("icon-left");
     const iconR = document.getElementById("icon-right");
-
-    // Координати змінено, щоб лінія починалася ВІД СОЛОМИ (z-index у CSS має бути 14 для ліній)
-    const anchorL = { x: window.innerWidth * 0.16, y: window.innerHeight * 0.78 };
-    const anchorR = { x: window.innerWidth * 0.84, y: window.innerHeight * 0.78 };
+    const lineL = document.getElementById("string-left");
+    const lineR = document.getElementById("string-right");
+    const hand = document.getElementById("tutorial-hand");
+    const anchorL = { x: window.innerWidth * 0.10, y: window.innerHeight * 0.82 };
+    const anchorR = { x: window.innerWidth * 0.90, y: window.innerHeight * 0.82 };
 
     function updateLines() {
         const arrowRect = arrow.getBoundingClientRect();
@@ -146,19 +172,6 @@ const bgMusic = document.getElementById("bg-music");
         drawPngLine(lineR, anchorR.x, anchorR.y, targetX, targetY);
     }
 
-   function createStuckArrow(fixedAngle) {
-        const layer = document.getElementById("stuck-arrows-layer");
-        layer.innerHTML = ""; 
-        const img = document.createElement("img");
-        img.src = "assets/arrow.png";
-        img.className = "stuck-arrow";
-
-        // visualAngle = 180 означає, що стріла дивиться вниз (в центр колеса)
-        const visualAngle = 180; 
-
-        img.style.transform = `translateX(-50%) translateY(-32vw) rotate(${visualAngle}deg)`;
-        layer.appendChild(img);
-    }
     function drawPngLine(el, x1, y1, x2, y2) {
         const dist = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
         const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
@@ -169,10 +182,14 @@ const bgMusic = document.getElementById("bg-music");
 
     arrow.addEventListener("pointerdown", e => {
         if (spinning) return;
-        if (!isMusicPlaying) {
-            bgMusic.play().catch(e => console.log("Music play blocked"));
-            isMusicPlaying = true;
-        }
+
+        dragging = true;
+        startY = e.clientY;
+        
+        hand.style.opacity = "0"; // Ховаємо руку
+        arrow.classList.remove("arrow-tutorial-anim"); // Зупиняємо авто-рух стріли
+
+        if (!isMusicPlaying) { bgMusic.play().catch(()=>{}); isMusicPlaying = true; }
         dragging = true; startY = e.clientY;
         wheelContainer.classList.add("spinning-continuous");
     });
@@ -180,179 +197,154 @@ const bgMusic = document.getElementById("bg-music");
     window.addEventListener("pointermove", e => {
         if (!dragging) return;
         pullDistance = Math.min(Math.max(0, e.clientY - startY), 120);
-        
         arrow.style.transform = `translateY(${pullDistance}px)`;
         document.getElementById("hay-left").style.transform = `rotate(${pullDistance / 10}deg)`;
         document.getElementById("hay-right").style.transform = `rotate(${180 - pullDistance / 10}deg)`;
-        
-        // Плавне зменшення аватарок
-        const scaleValue = 1 - (pullDistance / 120) * 0.15;
-        iconL.style.transform = `scale(${scaleValue})`;
-        iconR.style.transform = `scale(${scaleValue})`;
-        
         updateLines();
     });
 
     window.addEventListener("pointerup", () => {
         if (!dragging) return;
         dragging = false;
-
-        if (pullDistance > 40) {
-            fire();
-        } else {
-            // Повернення в початковий стан при скасуванні
-            arrow.style.transform = "translateY(0)";
-            wheelContainer.classList.remove("spinning-continuous");
-            iconL.style.transform = "scale(1)";
-            iconR.style.transform = "scale(1)";
-            document.getElementById("hay-left").style.transform = `rotate(0deg)`;
-            document.getElementById("hay-right").style.transform = `rotate(180deg)`;
-            updateLines();
-        }
+        if (pullDistance > 40) fire();
+        else resetArrowVisuals();
     });
 
-function fire() {
-    if (spinning) return;
-    spinning = true;
-
-    // 1. Випадковий результат
-    const result = outcomes[Math.floor(Math.random() * outcomes.length)];
-    
-    // 2. Рандомна точка приземлення стріли (наприклад, від -30 до +30 градусів від центру вгорі)
-    const landingAngle = (Math.random() - 0.5) * 60; 
-
-    // Анімація польоту (візуально)
-    arrow.style.transition = "transform 0.2s ease-in";
-    arrow.style.transform = `translate(${landingAngle * 2}px, -45vh) rotate(${landingAngle}deg) scale(0.6)`;
-
-    setTimeout(() => {
-        arrow.style.opacity = "0";
-
-        // Зупиняємо поточне фонове крутіння
-        const style = window.getComputedStyle(wheelContainer);
-        const matrix = new WebKitCSSMatrix(style.transform);
-        const currentAngle = Math.round(Math.atan2(matrix.b, matrix.a) * (180 / Math.PI));
-        
+    function resetArrowVisuals() {
+        arrow.style.transform = "translateY(0)";
         wheelContainer.classList.remove("spinning-continuous");
-        wheelContainer.style.transform = `rotate(${currentAngle}deg)`;
-
-        // 3. Створюємо стрілу, яка "сидить" на тексті
-        createStuckArrowAt(result.angle);
-
-        setTimeout(() => {
-            wheelContainer.style.transition = "transform 4s cubic-bezier(0.1, 0, 0.1, 1)";
-            
-            // Важливо: baseRotation має бути великим числом, щоб колесо крутилося вперед
-            const extraSpins = 1440; // 4 повних кола
-            
-            // ФОРМУЛА: 
-            // baseRotation (поточний) + оберти + точка приземлення - кут тексту
-            // Це гарантує, що текст приїде точно під flightAngle стріли
-            const finalRotation = currentAngle + extraSpins + (landingAngle - result.angle);
-            
-            wheelContainer.style.transform = `rotate(${finalRotation}deg)`;
-        }, 50);
-
-        setTimeout(() => showReward(result.id), 4500);
-    }, 200);
-}
-
-function createStuckArrowAt(sectorAngle) {
-    const layer = document.getElementById("stuck-arrows-layer");
-    layer.innerHTML = ""; 
-    const img = document.createElement("img");
-    img.src = "assets/arrow.png";
-    img.className = "stuck-arrow";
-
-    // Ставимо стрілу на координату сектора (наприклад, 45 градусів)
-    // Вона буде там "мертво" сидіти, поки колесо крутиться до фінішу
-    img.style.position = "absolute";
-    img.style.left = "50%";
-    img.style.top = "50%";
-    img.style.width = "15vw";
-    img.style.transformOrigin = "center center";
-    
-    // rotate(sectorAngle) - кут напису
-    // translateY(-22vw) - винос до краю колеса
-    // rotate(180deg) - розворот вістрям до центру
-    img.style.transform = `translate(-50%, -50%) rotate(${sectorAngle}deg) translateY(-22vw) rotate(180deg)`;
-    
-    layer.appendChild(img);
-}
-    function showReward(girlKey) {
-    document.getElementById("flash").style.opacity = "1";
-    bgMusic.volume = 0.2;
-    setTimeout(() => {
-        const girl = girls[girlKey];
-        const video = document.getElementById("girl-animation");
-        
-        // Встановлюємо джерело відео
-        video.src = girl.animation;
-        
-        // Приховуємо колесо, показуємо сцену нагороди
-        document.getElementById("wheel-scene").classList.add("hidden");
-        document.getElementById("reward-scene").classList.remove("hidden");
-        document.getElementById("flash").style.opacity = "0";
-
-        // Важливо: завантажуємо та запускаємо відео
-        video.load();
-        const playPromise = video.play();
-
-        if (playPromise !== undefined) {
-            playPromise.then(() => {
-                // Відео почало грати успішно
-                // Якщо хочете звук саме з відео, розкоментуйте:
-                // video.muted = false; 
-            }).catch(error => {
-                console.log("Автоплей заблоковано, пробуємо ще раз при кліку", error);
-            });
-        }
-
-        // Якщо звук окремим файлом (як у вашому коді):
-        if (girl.voice) {
-            girl.voice.play().catch(e => console.log("Аудіо заблоковано"));
-        }
-    }, 200);
-}
-    function resetGame() {
-    const video = document.getElementById("girl-animation");
-    bgMusic.volume = 1.0;
-    if (bgMusic.paused) bgMusic.play();
-    video.pause();
-    video.src = ""; // Очищуємо, щоб зупинити завантаження
-    
-    spinning = false;
-    document.getElementById("stuck-arrows-layer").innerHTML = "";
-    wheelContainer.style.transition = "none";
-    wheelContainer.style.transform = `rotate(0deg)`;
-    currentRotation = 0;
-    
-    document.getElementById("reward-scene").classList.add("hidden");
-    document.getElementById("wheel-scene").classList.remove("hidden");
-    
-    updateBottomIcons();
-    arrow.style.transition = "none";
-    arrow.style.opacity = "1";
-    arrow.style.transform = "translateY(0)";
-    
-    iconL.style.transform = "scale(1)";
-    iconR.style.transform = "scale(1)";
-    
-    document.getElementById("hay-left").style.transform = `rotate(0deg)`;
-    document.getElementById("hay-right").style.transform = `rotate(180deg)`;
-    updateLines();
-}
-
-    function updateBottomIcons() {
-        let first = Math.floor(Math.random() * allAvatars.length);
-        let second;
-        do { second = Math.floor(Math.random() * allAvatars.length); } while (first === second);
-        document.getElementById("img-left").src = allAvatars[first];
-        document.getElementById("img-right").src = allAvatars[second];
+        document.getElementById("hay-left").style.transform = `rotate(0deg)`;
+        document.getElementById("hay-right").style.transform = `rotate(180deg)`;
+        updateLines();
     }
 
-    window.onload = () => { updateLines(); updateBottomIcons(); };
+    function fire() {
+        spinning = true;
+        const result = outcomes[Math.floor(Math.random() * outcomes.length)];
+        const landingAngle = (Math.random() - 0.5) * 60; 
+
+        arrow.style.transition = "transform 0.2s ease-in";
+        arrow.style.transform = `translate(${landingAngle * 2}px, -45vh) rotate(${landingAngle}deg) scale(0.6)`;
+
+        setTimeout(() => {
+            arrow.style.opacity = "0";
+            const style = window.getComputedStyle(wheelContainer);
+            const matrix = new WebKitCSSMatrix(style.transform);
+            const currentAngle = Math.round(Math.atan2(matrix.b, matrix.a) * (180 / Math.PI));
+            
+            wheelContainer.classList.remove("spinning-continuous");
+            wheelContainer.style.transform = `rotate(${currentAngle}deg)`;
+
+            createStuckArrowAt(result.angle);
+
+            setTimeout(() => {
+                wheelContainer.style.transition = "transform 4s cubic-bezier(0.1, 0, 0.1, 1)";
+                const finalRotation = currentAngle + 1440 + (landingAngle - result.angle);
+                wheelContainer.style.transform = `rotate(${finalRotation}deg)`;
+            }, 50);
+
+            setTimeout(() => showReward(result.id), 4500);
+        }, 200);
+    }
+
+    function createStuckArrowAt(sectorAngle) {
+        const layer = document.getElementById("stuck-arrows-layer");
+        layer.innerHTML = ""; 
+        const img = document.createElement("img");
+        img.src = "assets/arrow.png";
+        img.className = "stuck-arrow";
+        img.style.left = "50%"; img.style.top = "50%";
+        img.style.transform = `translate(-50%, -50%) rotate(${sectorAngle}deg) translateY(-22vw) rotate(180deg)`;
+        layer.appendChild(img);
+    }
+
+function showReward(girlKey) {
+        document.getElementById("flash").style.opacity = "1";
+        bgMusic.volume = 0.2;
+        
+        setTimeout(() => {
+            const girl = girls[girlKey];
+            const video = document.getElementById("girl-animation");
+            const cta = document.getElementById("cta-btn");
+            
+            video.src = girl.animation;
+            
+            // Скидаємо стилі сцени перед показом
+            video.classList.remove("video-dimmed");
+            cta.classList.remove("cta-visible");
+
+            document.getElementById("wheel-scene").classList.add("hidden");
+            document.getElementById("reward-scene").classList.remove("hidden");
+            document.getElementById("flash").style.opacity = "0";
+
+            video.load();
+            video.play();
+
+            if (girl.voice) {
+                // Коли голос закінчується — з'являється кнопка і темніє відео
+                girl.voice.onended = () => {
+                    video.classList.add("video-dimmed");
+                    cta.classList.add("cta-visible");
+                };
+                girl.voice.play().catch(()=>{});
+            } else {
+                // Якщо голосу немає, показуємо кнопку через 2 секунди
+                setTimeout(() => {
+                    video.classList.add("video-dimmed");
+                    cta.classList.add("cta-visible");
+                }, 2000);
+            }
+        }, 200);
+    }
+
+    function resetGame() {
+        const video = document.getElementById("girl-animation");
+        const cta = document.getElementById("cta-btn");
+
+        bgMusic.volume = 1.0;
+        video.pause();
+        video.src = "";
+
+        video.classList.remove("video-dimmed");
+         cta.classList.remove("cta-visible");
+        
+        spinning = false; 
+        document.getElementById("stuck-arrows-layer").innerHTML = "";
+        
+        document.getElementById("reward-scene").classList.add("hidden");
+        document.getElementById("wheel-scene").classList.remove("hidden");
+        
+        wheelContainer.style.transition = "none";
+        wheelContainer.style.transform = `rotate(0deg)`;
+        
+        arrow.style.transition = "none";
+        arrow.style.opacity = "1";
+        arrow.style.transform = "translateY(0)";
+        
+        document.getElementById("hay-left").style.transform = `rotate(0deg)`;
+        document.getElementById("hay-right").style.transform = `rotate(180deg)`;
+        updateLines();
+    }
+
+    window.onload = () => { 
+        updateLines(); 
+        arrow.classList.add("arrow-tutorial-anim");
     
+        // Оскільки стріла анімується CSS, нам треба постійно оновлювати лінії
+        const tutInterval = setInterval(() => {
+            if (!dragging && !spinning) {
+                updateLines();
+            } else {
+                clearInterval(tutInterval);
+            }
+        }, 16); // 60fps
+    };
+
+    window.onresize = () => {
+        anchorL.x = window.innerWidth * 0.10; anchorL.y = window.innerHeight * 0.82;
+        anchorR.x = window.innerWidth * 0.90; anchorR.y = window.innerHeight * 0.82;
+        updateLines();
+    };
 </script>
 </body>
 </html>
