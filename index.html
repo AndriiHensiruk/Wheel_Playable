@@ -13,7 +13,13 @@
 
         /* Wheel */
         #wheel-wrapper { position: relative; width: 85vw; height: 85vw; margin-top: -15vh; z-index: 5; }
-        #wheel-container { position: relative; width: 100%; height: 100%; will-change: transform; }
+#wheel-container { 
+    position: relative; 
+    width: 100%; 
+    height: 100%; 
+    will-change: transform; 
+    transition: transform 0s; /* По дефолту миттєво */
+}
         #wheel { width: 100%; height: 100%; display: block; }
         #pointer { position: absolute; width: 12%; left: 50%; top: -5%; transform: translateX(-50%); z-index: 10; }
 
@@ -109,13 +115,12 @@
         emma: { animation: "assets/MiaDuath.webm", voice: new Audio("assets/mia.m4a") }
     };
 
-    // Тільки одне оголошення outcomes з кутами
     const outcomes = [
-        { id: "mia", angle: 0 },      
-        { id: "emma", angle: 90 },    
-        { id: "sofia", angle: 180 },  
-        { id: "luna", angle: 270 }    
-    ];
+    { id: "mia", angle: 315 },      // Mia Spills Milk (Верх-Ліво)
+    { id: "emma", angle: 45 },      // Wild Cowgirl (Верх-Право)
+    { id: "sofia", angle: 135 },    // Reverse Cowgirl (Низ-Право)
+    { id: "luna", angle: 225 }      // Spicy Dance (Низ-Ліво)
+];
 
     const allAvatars = ["assets/avatar1.png", "assets/avatar2.png", "assets/avatar3.png", "assets/avatar4.png"];
     
@@ -206,66 +211,74 @@ const bgMusic = document.getElementById("bg-music");
         }
     });
 
-  function fire() {
-        spinning = true;
+function fire() {
+    if (spinning) return;
+    spinning = true;
+
+    // 1. Випадковий результат
+    const result = outcomes[Math.floor(Math.random() * outcomes.length)];
+    
+    // 2. Рандомна точка приземлення стріли (наприклад, від -30 до +30 градусів від центру вгорі)
+    const landingAngle = (Math.random() - 0.5) * 60; 
+
+    // Анімація польоту (візуально)
+    arrow.style.transition = "transform 0.2s ease-in";
+    arrow.style.transform = `translate(${landingAngle * 2}px, -45vh) rotate(${landingAngle}deg) scale(0.6)`;
+
+    setTimeout(() => {
+        arrow.style.opacity = "0";
+
+        // Зупиняємо поточне фонове крутіння
+        const style = window.getComputedStyle(wheelContainer);
+        const matrix = new WebKitCSSMatrix(style.transform);
+        const currentAngle = Math.round(Math.atan2(matrix.b, matrix.a) * (180 / Math.PI));
         
-        // Повертаємо аватарки до норми
-        document.getElementById("icon-left").style.transform = "scale(1)";
-        document.getElementById("icon-right").style.transform = "scale(1)";
+        wheelContainer.classList.remove("spinning-continuous");
+        wheelContainer.style.transform = `rotate(${currentAngle}deg)`;
 
-        arrow.style.transition = "transform 0.2s ease-in";
-        arrow.style.transform = "translateY(-45vh) scale(0.6)";
-
-        // 1. Випадковий вибір сектора з текстом
-        const result = outcomes[Math.floor(Math.random() * outcomes.length)];
-        // Додаємо jitter, щоб не було ідеально в центр тексту кожен раз
-        const jitter = (Math.random() - 0.5) * 15; 
-        const targetAngle = result.angle + jitter; 
+        // 3. Створюємо стрілу, яка "сидить" на тексті
+        createStuckArrowAt(result.angle);
 
         setTimeout(() => {
-            arrow.style.transition = "none";
-            arrow.style.opacity = "0";
-
-            const style = window.getComputedStyle(wheelContainer);
-            const matrix = new WebKitCSSMatrix(style.transform);
-            const currentAngle = Math.round(Math.atan2(matrix.b, matrix.a) * (180 / Math.PI));
+            wheelContainer.style.transition = "transform 4s cubic-bezier(0.1, 0, 0.1, 1)";
             
-            wheelContainer.classList.remove("spinning-continuous");
-            wheelContainer.style.transform = `rotate(${currentAngle}deg)`;
+            // Важливо: baseRotation має бути великим числом, щоб колесо крутилося вперед
+            const extraSpins = 1440; // 4 повних кола
+            
+            // ФОРМУЛА: 
+            // baseRotation (поточний) + оберти + точка приземлення - кут тексту
+            // Це гарантує, що текст приїде точно під flightAngle стріли
+            const finalRotation = currentAngle + extraSpins + (landingAngle - result.angle);
+            
+            wheelContainer.style.transform = `rotate(${finalRotation}deg)`;
+        }, 50);
 
-            // 2. Стріла візуально втикається вгорі (0 градусів відносно екрану)
-            createStuckArrow(0); 
+        setTimeout(() => showReward(result.id), 4500);
+    }, 200);
+}
 
-            setTimeout(() => {
-                wheelContainer.style.transition = "transform 5s cubic-bezier(0.1, 0.45, 0.1, 1)";
-                
-                // 3. ГОЛОВНИЙ ФІКС: 
-                // baseRotation — це повні оберти, які вже зробило колесо.
-                // Додаємо 720 (2 оберти) для плавності.
-                // ВІДНІМАЄМО targetAngle, щоб саме цей сектор докрутився до стріли вгорі.
-                const baseRotation = Math.round(currentAngle / 360) * 360;
-                currentRotation = baseRotation + 720 - targetAngle;
-                
-                wheelContainer.style.transform = `rotate(${currentRotation}deg)`;
-            }, 15);
+function createStuckArrowAt(sectorAngle) {
+    const layer = document.getElementById("stuck-arrows-layer");
+    layer.innerHTML = ""; 
+    const img = document.createElement("img");
+    img.src = "assets/arrow.png";
+    img.className = "stuck-arrow";
 
-            setTimeout(() => showReward(result.id), 5000);
-        }, 200);
-    }
-
-    function createStuckArrow(sectorAngle) {
-        const layer = document.getElementById("stuck-arrows-layer");
-        layer.innerHTML = ""; 
-        const img = document.createElement("img");
-        img.src = "assets/arrow.png";
-        img.className = "stuck-arrow";
-
-        // Стріла розвернута хвостом назовні, кінчиком до центру
-        const visualAngle = sectorAngle + 180; 
-
-        img.style.transform = `translateX(-50%) translateY(-32vw) rotate(${visualAngle}deg)`;
-        layer.appendChild(img);
-    }
+    // Ставимо стрілу на координату сектора (наприклад, 45 градусів)
+    // Вона буде там "мертво" сидіти, поки колесо крутиться до фінішу
+    img.style.position = "absolute";
+    img.style.left = "50%";
+    img.style.top = "50%";
+    img.style.width = "15vw";
+    img.style.transformOrigin = "center center";
+    
+    // rotate(sectorAngle) - кут напису
+    // translateY(-22vw) - винос до краю колеса
+    // rotate(180deg) - розворот вістрям до центру
+    img.style.transform = `translate(-50%, -50%) rotate(${sectorAngle}deg) translateY(-22vw) rotate(180deg)`;
+    
+    layer.appendChild(img);
+}
     function showReward(girlKey) {
     document.getElementById("flash").style.opacity = "1";
     bgMusic.volume = 0.2;
