@@ -133,15 +133,16 @@
         }
         .hand-anim { animation: handPull 1.5s ease-in-out infinite; }
         .arrow-tutorial-anim { animation: handPull 1.5s ease-in-out infinite; }
+        
         #mountain-title {
-    position: absolute;
-    width: 110%; 
-    left: 50%;
-    transform: translateX(-50%);
-    bottom: 70%;
-    z-index: 4; 
-    pointer-events: none;
-}
+            position: absolute;
+            width: 110%; 
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 70%;
+            z-index: 4; 
+            pointer-events: none;
+        }
 
         /* CTA-кнопка */
         #cta-btn {
@@ -199,7 +200,7 @@
 <body>
 
 <div id="game-wrapper">
-  <audio id="bg-music" src="assets/background.mp3" loop preload="auto"></audio>
+  <audio id="bg-music" src="assets/background.mp3" loop preload="auto" playsinline></audio>
   <div id="game">
     <div id="wheel-scene" class="scene">
         <img class="bg" src="assets/bg.png" />
@@ -245,7 +246,6 @@
         emma:  { animation: "assets/MiaJump.webm",   voice: new Audio("assets/mia.m4a") }
     };
 
-    
     const outcomes = [
         { id: "mia",   angle: 310 }, 
         { id: "emma",  angle: 75  }, 
@@ -295,6 +295,19 @@
         el.style.transform = `rotate(${angle}deg) scaleY(1.4)`;
     }
 
+    // Безпечна функція запуску аудіо
+    function tryPlayMusic() {
+        if (!isMusicPlaying) {
+            bgMusic.play()
+                .then(() => {
+                    isMusicPlaying = true;
+                })
+                .catch(err => {
+                    console.log("Браузер очікує інтенсивнішого свайпу...");
+                });
+        }
+    }
+
     function startDrag(clientY) {
         if (spinning) return;
         dragging    = true;
@@ -306,10 +319,6 @@
         hand.classList.add("hidden");
         arrow.classList.remove("arrow-tutorial-anim");
         
-        if (!isMusicPlaying) { 
-            bgMusic.play().catch(()=>{}); 
-            isMusicPlaying = true; 
-        }
         wheelContainer.classList.add("spinning-continuous");
     }
 
@@ -321,7 +330,15 @@
 
     wrapper.addEventListener("pointermove", e => {
         if (!dragging) return;
+        
+        // Вираховуємо дистанцію свайпу вниз
         pullDistance = Math.min(Math.max(0, e.clientY - startY), 120);
+        
+        // ЗМІНА ТУТ: Як тільки палець зсунувся вниз хоча б на 5 пікселів (тобто свайп розпочався) — вмикаємо музику
+        if (pullDistance > 5) {
+            tryPlayMusic();
+        }
+
         arrow.style.transform = `translateY(${pullDistance}px)`;
         document.getElementById("hay-left").style.transform  = `rotate(${pullDistance / 10}deg)`;
         document.getElementById("hay-right").style.transform = `rotate(${180 - pullDistance / 10}deg)`;
@@ -397,9 +414,7 @@
         layer.innerHTML = "";
 
         const wheelPx = wheelWrapper.offsetWidth;
-        
         const radiusPx = wheelPx * 0.22;
-        
         const arrowSizePx = wheelPx * 0.26;
 
         const img = document.createElement("img");
@@ -439,6 +454,7 @@
             video.play();
 
             if (girl.voice) {
+                girl.voice.load();
                 girl.voice.onended = () => {
                     video.classList.add("video-dimmed");
                     cta.classList.add("cta-visible");
