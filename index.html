@@ -297,15 +297,25 @@
 
     // Безпечна функція запуску аудіо
     function tryPlayMusic() {
-        if (!isMusicPlaying) {
-            bgMusic.play()
-                .then(() => {
-                    isMusicPlaying = true;
-                })
-                .catch(err => {
-                    console.log("Браузер очікує інтенсивнішого свайпу...");
-                });
-        }
+        if (isMusicPlaying) return;
+
+        bgMusic.muted = true;
+
+        bgMusic.play()
+        
+            .then(() => {
+                // Після успішного старту одразу вмикаємо звук
+                bgMusic.muted = false;
+                bgMusic.volume = 1;
+
+                isMusicPlaying = true;
+
+                console.log("Music started");
+            })
+            .catch(err => {
+                console.log("Audio blocked:", err);
+            });
+            bgMusic.crossOrigin = "anonymous";
     }
 
     function startDrag(clientY) {
@@ -322,11 +332,13 @@
         wheelContainer.classList.add("spinning-continuous");
     }
 
-    wrapper.addEventListener("pointerdown", e => {
-        if (e.button !== 0 || spinning) return;
-        startDrag(e.clientY);
-        wrapper.setPointerCapture(e.pointerId);
-    });
+   wrapper.addEventListener("pointerdown", e => {
+    if (e.button !== 0 || spinning) return;
+    tryPlayMusic();
+
+    startDrag(e.clientY);
+    wrapper.setPointerCapture(e.pointerId);
+});
 
     wrapper.addEventListener("pointermove", e => {
         if (!dragging) return;
@@ -334,10 +346,6 @@
         // Вираховуємо дистанцію свайпу вниз
         pullDistance = Math.min(Math.max(0, e.clientY - startY), 120);
         
-        // ЗМІНА ТУТ: Як тільки палець зсунувся вниз хоча б на 5 пікселів (тобто свайп розпочався) — вмикаємо музику
-        if (pullDistance > 5) {
-            tryPlayMusic();
-        }
 
         arrow.style.transform = `translateY(${pullDistance}px)`;
         document.getElementById("hay-left").style.transform  = `rotate(${pullDistance / 10}deg)`;
