@@ -295,27 +295,17 @@
         el.style.transform = `rotate(${angle}deg) scaleY(1.4)`;
     }
 
-    // Безпечна функція запуску аудіо
+    // Оновлена функція запуску аудіо
     function tryPlayMusic() {
-        if (isMusicPlaying) return;
-
-        bgMusic.muted = true;
-
-        bgMusic.play()
-        
-            .then(() => {
-                // Після успішного старту одразу вмикаємо звук
-                bgMusic.muted = false;
-                bgMusic.volume = 1;
-
-                isMusicPlaying = true;
-
-                console.log("Music started");
-            })
-            .catch(err => {
-                console.log("Audio blocked:", err);
-            });
-            bgMusic.crossOrigin = "anonymous";
+        if (!isMusicPlaying) {
+            bgMusic.play()
+                .then(() => {
+                    isMusicPlaying = true;
+                })
+                .catch(err => {
+                    console.log("Очікування взаємодії...");
+                });
+        }
     }
 
     function startDrag(clientY) {
@@ -329,23 +319,39 @@
         hand.classList.add("hidden");
         arrow.classList.remove("arrow-tutorial-anim");
         
+        // КРОК 1: Робимо мікро-запуск "порожнього" звуку в момент кліку ( pointerdown ), 
+        // щоб Safari дав зелене світло на подальше програвання
+        bgMusic.play().then(() => {
+            // Якщо браузер дозволив одразу — фіксуємо запуск
+            isMusicPlaying = true;
+        }).catch(() => {
+            // Якщо заблокував — звук увімкнеться за мить через pointermove
+            bgMusic.pause();
+        });
+        
         wheelContainer.classList.add("spinning-continuous");
     }
 
-   wrapper.addEventListener("pointerdown", e => {
-    if (e.button !== 0 || spinning) return;
-    tryPlayMusic();
-
-    startDrag(e.clientY);
-    wrapper.setPointerCapture(e.pointerId);
-});
+    wrapper.addEventListener("pointerdown", e => {
+        if (e.button !== 0 || spinning) return;
+        startDrag(e.clientY);
+        wrapper.setPointerCapture(e.pointerId);
+    });
 
     wrapper.addEventListener("pointermove", e => {
         if (!dragging) return;
         
-        // Вираховуємо дистанцію свайпу вниз
-        pullDistance = Math.min(Math.max(0, e.clientY - startY), 120);
-        
+        // Перевіряємо рух строго вниз
+        if (e.clientY > startY) {
+            pullDistance = Math.min(e.clientY - startY, 120);
+            
+            // КРОК 2: Тільки якщо палець пройшов вниз більше 5 пікселів — вмикаємо аудіо
+            if (pullDistance > 5) {
+                tryPlayMusic();
+            }
+        } else {
+            pullDistance = 0;
+        }
 
         arrow.style.transform = `translateY(${pullDistance}px)`;
         document.getElementById("hay-left").style.transform  = `rotate(${pullDistance / 10}deg)`;
