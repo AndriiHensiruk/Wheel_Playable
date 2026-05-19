@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="uk">
 <head>
@@ -12,7 +13,7 @@
             width: 100%; height: 100%;
             overflow: hidden;
             background: #111;
-            font-family: sans-serif;
+            font-family: 'Arial Rounded MT Bold', 'Helvetica Neue', sans-serif;
             touch-action: none;
             user-select: none; -webkit-user-select: none;
         }
@@ -41,6 +42,47 @@
             display: flex; justify-content: center; align-items: center;
         }
         .hidden { display: none !important; }
+        
+        /* СТАРТОВИЙ ЕКРАН */
+        #start-screen {
+            position: absolute; inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            z-index: 50;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.4s ease;
+        }
+        
+        /* УНІКАЛЬНА CSS КНОПКА PLAY */
+        .custom-play-btn {
+            background: linear-gradient(135deg, #ff007c 0%, #ff6b00 100%);
+            color: #ffffff;
+            font-size: 28px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            padding: 18px 55px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 8px 0 #b3004b, 
+                        0 15px 25px rgba(255, 0, 124, 0.4), 
+                        inset 0 2px 3px rgba(255,255,255,0.4);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            will-change: transform;
+            animation: startButtonPulse 1.2s infinite ease-in-out;
+            transition: transform 0.1s ease;
+        }
+        
+        .custom-play-btn:active {
+            transform: scale(0.95) translateY(4px);
+            box-shadow: 0 4px 0 #b3004b, 
+                        0 8px 15px rgba(255, 0, 124, 0.4);
+        }
+
         .bg {
             position: absolute; inset: 0;
             width: 100%; height: 100%;
@@ -66,7 +108,7 @@
             position: absolute; z-index: 14;
             pointer-events: none;
             transform-origin: 0% 50%;
-            height: 8px;
+            height: 25px;
             will-change: width, transform;
         }
 
@@ -108,12 +150,12 @@
             position: absolute;
             width: 22%;
             aspect-ratio: 1/1;
-            bottom: 5%;
+            bottom: 3%;
             overflow: hidden;
             z-index: 20;
         }
-        .left-main  { left: 8%; }
-        .right-main { right: 8%; }
+        .left-main  { left: 5%; }
+        .right-main { right: 5%; }
         .avatar img { width: 100%; height: 100%; object-fit: cover; }
 
         /* Рука-туторіал */
@@ -144,7 +186,7 @@
             pointer-events: none;
         }
 
-        /* CTA-кнопка */
+        /* CTA-кнопка фіналу */
         #cta-btn {
             display: none;
             position: absolute;
@@ -178,6 +220,12 @@
             0%, 100% { transform: translateX(-50%) scale(1); }
             50%       { transform: translateX(-50%) scale(1.06); }
         }
+        
+        /* Жива пульсація для стартової кнопки */
+        @keyframes startButtonPulse {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 15px rgba(255, 0, 124, 0.4)); }
+            50%      { transform: scale(1.08); filter: drop-shadow(0 0 30px rgba(255, 0, 124, 0.8)); }
+        }
 
         #flash {
             position: absolute; inset: 0;
@@ -202,6 +250,11 @@
 <div id="game-wrapper">
   <audio id="bg-music" src="assets/background.mp3" loop preload="auto" playsinline></audio>
   <div id="game">
+    
+    <div id="start-screen">
+        <button class="custom-play-btn" onclick="startGameFromSplash()">Play</button>
+    </div>
+
     <div id="wheel-scene" class="scene">
         <img class="bg" src="assets/bg.png" />
         <img id="mountain-title" src="assets/mountain_text.png" />
@@ -215,7 +268,7 @@
             </div>
         </div>
 
-        <div id="tutorial-hand" class="hand-anim">
+        <div id="tutorial-hand" class="hand-anim hidden">
             <img src="assets/hand.webp" style="width:100%;height:100%;" />
         </div>
 
@@ -255,7 +308,7 @@
 
     const targetSectorAtTop = 0; 
 
-    let dragging = false, spinning = false, isMusicPlaying = false;
+    let dragging = false, spinning = false, isMusicPlaying = false, gameStarted = false;
     let startY = 0, pullDistance = 0;
     let tutInterval = null;
 
@@ -267,14 +320,15 @@
     const lineR          = document.getElementById("string-right");
     const hand           = document.getElementById("tutorial-hand");
     const wrapper        = document.getElementById("game-wrapper");
+    const startScreen    = document.getElementById("start-screen");
 
     let anchorL = {}, anchorR = {};
 
     function calcAnchors() {
         const w = wrapper.offsetWidth;
         const h = wrapper.offsetHeight;
-        anchorL.x = w * 0.10;  anchorL.y = h * 0.82;
-        anchorR.x = w * 0.90;  anchorR.y = h * 0.82;
+        anchorL.x = w * 0.03;  anchorL.y = h * 0.82;
+        anchorR.x = w * 0.97;  anchorR.y = h * 0.82;
     }
 
     function updateLines() {
@@ -295,21 +349,25 @@
         el.style.transform = `rotate(${angle}deg) scaleY(1.4)`;
     }
 
-    // Оновлена функція запуску аудіо
-    function tryPlayMusic() {
-        if (!isMusicPlaying) {
-            bgMusic.play()
-                .then(() => {
-                    isMusicPlaying = true;
-                })
-                .catch(err => {
-                    console.log("Очікування взаємодії...");
-                });
-        }
+    function startGameFromSplash() {
+        if (gameStarted) return;
+        gameStarted = true;
+
+        bgMusic.play().then(() => {
+            isMusicPlaying = true;
+        }).catch(e => console.log(e));
+
+        startScreen.style.opacity = "0";
+        setTimeout(() => {
+            startScreen.classList.add("hidden");
+            hand.classList.remove("hidden");
+            arrow.classList.add("arrow-tutorial-anim");
+            startTutorialLoop();
+        }, 400);
     }
 
     function startDrag(clientY) {
-        if (spinning) return;
+        if (spinning || !gameStarted) return;
         dragging    = true;
         startY      = clientY;
         pullDistance = 0;
@@ -318,37 +376,20 @@
         
         hand.classList.add("hidden");
         arrow.classList.remove("arrow-tutorial-anim");
-        
-        // КРОК 1: Робимо мікро-запуск "порожнього" звуку в момент кліку ( pointerdown ), 
-        // щоб Safari дав зелене світло на подальше програвання
-        bgMusic.play().then(() => {
-            // Якщо браузер дозволив одразу — фіксуємо запуск
-            isMusicPlaying = true;
-        }).catch(() => {
-            // Якщо заблокував — звук увімкнеться за мить через pointermove
-            bgMusic.pause();
-        });
-        
         wheelContainer.classList.add("spinning-continuous");
     }
 
     wrapper.addEventListener("pointerdown", e => {
-        if (e.button !== 0 || spinning) return;
+        if (e.button !== 0 || spinning || !gameStarted) return;
         startDrag(e.clientY);
         wrapper.setPointerCapture(e.pointerId);
     });
 
     wrapper.addEventListener("pointermove", e => {
-        if (!dragging) return;
+        if (!dragging || !gameStarted) return;
         
-        // Перевіряємо рух строго вниз
         if (e.clientY > startY) {
             pullDistance = Math.min(e.clientY - startY, 120);
-            
-            // КРОК 2: Тільки якщо палець пройшов вниз більше 5 пікселів — вмикаємо аудіо
-            if (pullDistance > 5) {
-                tryPlayMusic();
-            }
         } else {
             pullDistance = 0;
         }
@@ -381,7 +422,7 @@
         setTimeout(() => { 
             arrow.style.transition = "none"; 
             updateLines();
-            if(!spinning && !tutInterval) {
+            if(!spinning && !tutInterval && gameStarted) {
                 arrow.classList.add("arrow-tutorial-anim");
                 hand.classList.remove("hidden");
                 startTutorialLoop();
@@ -517,15 +558,13 @@
 
     function startTutorialLoop() {
         tutInterval = setInterval(() => {
-            if (!dragging && !spinning) updateLines();
+            if (!dragging && !spinning && gameStarted) updateLines();
         }, 16);
     }
 
     window.onload = () => {
         calcAnchors();
         updateLines();
-        arrow.classList.add("arrow-tutorial-anim");
-        startTutorialLoop();
     };
 
     window.onresize = () => {
