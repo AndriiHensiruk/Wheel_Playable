@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -231,12 +232,11 @@
             cursor: pointer;
         }
 
-        /* --- НОВІ СТИЛІ ДЛЯ КНОПКИ ЗВУКУ --- */
         #mute-btn {
             position: absolute;
             top: 4%; right: 4%;
             width: 45px; height: 45px;
-            z-index: 60; /* Вище за старт-скрін, щоб працювала завжди */
+            z-index: 60; 
             cursor: pointer;
             background: rgba(0, 0, 0, 0.6);
             border: 2px solid rgba(255, 255, 255, 0.4);
@@ -319,9 +319,11 @@
     const targetSectorAtTop = 0; 
 
     let dragging = false, spinning = false, isMusicPlaying = false, gameStarted = false;
-    let isMuted = false; // Нова змінна стану звуку
+    let isMuted = false; 
     let startY = 0, pullDistance = 0;
     let tutInterval = null;
+
+    let unlockedGirls = [];
 
     const bgMusic        = document.getElementById("bg-music");
     const arrow          = document.getElementById("arrow");
@@ -361,21 +363,18 @@
         el.style.transform = `rotate(${angle}deg) scaleY(1.4)`;
     }
 
-    // НОВА ФУНКЦІЯ: Перемикання звуку
     function toggleMusic(event) {
-        if (event) event.stopPropagation(); // Зупиняємо клік, щоб не тригерити натягування лука
+        if (event) event.stopPropagation(); 
         
         isMuted = !isMuted;
         bgMusic.muted = isMuted;
 
-        // Також мутимо озвучку дівчат, щоб раптово не закричали
         for (let key in girls) {
             if (girls[key].voice) {
                 girls[key].voice.muted = isMuted;
             }
         }
 
-        // Зміна іконки
         muteBtn.innerText = isMuted ? "🔇" : "🔊";
     }
 
@@ -385,7 +384,6 @@
 
         bgMusic.play().then(() => {
             isMusicPlaying = true;
-            // Перевіряємо поточний статус при старті (якщо юзер натиснув mute ще на сплеш-скріні)
             bgMusic.muted = isMuted;
         }).catch(e => console.log(e));
 
@@ -412,7 +410,6 @@
     }
 
     wrapper.addEventListener("pointerdown", e => {
-        // Перевірка: якщо клікнули саме по кнопці звуку, не починаємо тягнути стрілу
         if (e.target.id === "mute-btn") return;
         
         if (e.button !== 0 || spinning || !gameStarted) return;
@@ -467,7 +464,17 @@
 
     function fire() {
         spinning = true;
-        const result = outcomes[Math.floor(Math.random() * outcomes.length)];
+
+        let availableOutcomes = outcomes.filter(o => !unlockedGirls.includes(o.id));
+
+        if (availableOutcomes.length === 0) {
+            unlockedGirls = [];
+            availableOutcomes = outcomes;
+        }
+
+        const result = availableOutcomes[Math.floor(Math.random() * availableOutcomes.length)];
+        
+        unlockedGirls.push(result.id);
 
         arrow.style.transition = "transform 0.2s ease-in, opacity 0.1s 0.1s";
         arrow.style.transform  = `translateY(-60%) scale(0.4)`;
@@ -525,7 +532,6 @@
 
     function showReward(girlKey) {
         document.getElementById("flash").style.opacity = "1";
-        // Робимо тихіше, тільки якщо звук взагалі не вимкнено
         if (!isMuted) bgMusic.volume = 0.2;
 
         setTimeout(() => {
@@ -546,7 +552,7 @@
 
             if (girl.voice) {
                 girl.voice.load();
-                girl.voice.muted = isMuted; // Передаємо поточний статус муту дівчині
+                girl.voice.muted = isMuted; 
                 girl.voice.onended = () => {
                     video.classList.add("video-dimmed");
                     cta.classList.add("cta-visible");
@@ -611,3 +617,4 @@
 </script>
 </body>
 </html>
+
