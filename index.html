@@ -522,7 +522,7 @@
                 wheelContainer.style.transform  = `rotate(${finalAngle}deg)`;
             });
 
-            // ПАУЗА ПІСЛЯ ЗУПИНКИ КОЛЕСА (4000мс обертання + 1500мс комфортна пауза = 5500мс)
+            // ПАУЗА
             setTimeout(() => showReward(result.id), 5500);
         }, 200);
     }
@@ -570,11 +570,9 @@
 
             video.load();
             
-            // ЕФЕКТ СЛОВМО (Сповільнення відео до 0.6x)
+            // ЕФЕКТ СЛОВМО
             video.playbackRate = 0.6;
             video.play();
-
-            // ПРИШВИДШЕННЯ ПОЯВИ КНОПКИ ПЕРЕХОДУ (З'являється через 800мс)
             setTimeout(() => {
                 if (!document.getElementById("reward-scene").classList.contains("hidden")) {
                     video.classList.add("video-dimmed");
