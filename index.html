@@ -137,8 +137,6 @@
             z-index: 6;
             transform-origin: 50% 0%; 
         }
-
-        /* ОНОВЛЕНА ПАНЕЛЬ АВАТАРІВ КОРИСТУВАЧІВ */
         .avatar {
             position: absolute;
             width: 22%;
@@ -429,16 +427,26 @@
         wheelContainer.classList.add("spinning-continuous");
     }
 
+    // === ОНОВЛЕНІ ОБРОБНИКИ ПОДІЙ ДЛЯ СТАБІЛЬНОЇ РОБОТИ З МИШКОЮ ТА ТАЧЕМ ===
     wrapper.addEventListener("pointerdown", e => {
         if (e.target.id === "mute-btn" || e.target.closest("#mute-btn")) return;
+        if (spinning || !gameStarted) return;
         
-        if (e.button !== 0 || spinning || !gameStarted) return;
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        
+        e.preventDefault();
         startDrag(e.clientY);
-        wrapper.setPointerCapture(e.pointerId);
+        
+        try {
+            wrapper.setPointerCapture(e.pointerId);
+        } catch(err) {
+            console.log("Pointer capture failed fallback used");
+        }
     });
 
     wrapper.addEventListener("pointermove", e => {
         if (!dragging || !gameStarted) return;
+        e.preventDefault();
         
         if (e.clientY > startY) {
             pullDistance = Math.min(e.clientY - startY, 120);
@@ -455,13 +463,23 @@
     wrapper.addEventListener("pointerup", e => {
         if (!dragging) return;
         dragging = false;
+        
+        try {
+            wrapper.releasePointerCapture(e.pointerId);
+        } catch(err) {}
+        
         if (pullDistance > 40) fire();
         else resetArrowVisuals();
     });
 
-    wrapper.addEventListener("pointercancel", () => {
+    wrapper.addEventListener("pointercancel", e => {
         if (!dragging) return;
         dragging = false;
+        
+        try {
+            wrapper.releasePointerCapture(e.pointerId);
+        } catch(err) {}
+        
         resetArrowVisuals();
     });
 
@@ -570,9 +588,10 @@
 
             video.load();
             
-            // ЕФЕКТ СЛОВМО
+            // ЕФЕКТ СЛОВМО (0.6х)
             video.playbackRate = 0.6;
             video.play();
+           
             setTimeout(() => {
                 if (!document.getElementById("reward-scene").classList.contains("hidden")) {
                     video.classList.add("video-dimmed");
