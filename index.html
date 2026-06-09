@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -139,17 +138,32 @@
             transform-origin: 50% 0%; 
         }
 
+        /* ОНОВЛЕНА ПАНЕЛЬ АВАТАРІВ КОРИСТУВАЧІВ */
         .avatar {
             position: absolute;
             width: 22%;
-            aspect-ratio: 1/1;
             bottom: 3%;
-            overflow: hidden;
             z-index: 20;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
         .left-main  { left: 5%; }
         .right-main { right: 5%; }
-        .avatar img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .avatar-img-holder {
+            width: 100%;
+            aspect-ratio: 1/1;
+            border-radius: 15px;
+            overflow: hidden;
+            border: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        .avatar-img-holder img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .avatar-label {
+            display: none !important;
+        }
 
         #tutorial-hand {
             position: absolute;
@@ -287,14 +301,20 @@
 
         <div id="arrow-area"><img id="arrow" src="assets/arrow.png" /></div>
 
-        <div id="icon-left"  class="avatar left-main"><img src="assets/avatar1.png" /></div>
-        <div id="icon-right" class="avatar right-main"><img src="assets/avatar2.png" /></div>
+        <div id="icon-left" class="avatar left-main">
+            <div class="avatar-img-holder"><img src="assets/avatar1.png" /></div>
+            <div class="avatar-label">You</div>
+        </div>
+        <div id="icon-right" class="avatar right-main">
+            <div class="avatar-img-holder"><img src="assets/avatar2.png" /></div>
+            <div class="avatar-label">Mia</div>
+        </div>
     </div>
 
     <div id="reward-scene" class="scene hidden">
         <video id="girl-animation" playsinline muted loop></video>
         <img id="back-btn" src="assets/back.png" onclick="resetGame()" />
-        <img id="cta-btn"  src="assets/cta.webp" onclick="window.open('https://honeytoon.com/comic-video/teach-me-first?n=1','_self')" />
+        <img id="cta-btn"  src="assets/cta.webp" onclick="window.open('https://honeytoon.com/comic-video/teach-me-first?n=','_self')" />
     </div>
 
     <div id="flash"></div>
@@ -410,7 +430,7 @@
     }
 
     wrapper.addEventListener("pointerdown", e => {
-        if (e.target.id === "mute-btn") return;
+        if (e.target.id === "mute-btn" || e.target.closest("#mute-btn")) return;
         
         if (e.button !== 0 || spinning || !gameStarted) return;
         startDrag(e.clientY);
@@ -502,7 +522,8 @@
                 wheelContainer.style.transform  = `rotate(${finalAngle}deg)`;
             });
 
-            setTimeout(() => showReward(result.id), 4200);
+            // ПАУЗА ПІСЛЯ ЗУПИНКИ КОЛЕСА (4000мс обертання + 1500мс комфортна пауза = 5500мс)
+            setTimeout(() => showReward(result.id), 5500);
         }, 200);
     }
 
@@ -548,21 +569,23 @@
             document.getElementById("flash").style.opacity = "0";
 
             video.load();
+            
+            // ЕФЕКТ СЛОВМО (Сповільнення відео до 0.6x)
+            video.playbackRate = 0.6;
             video.play();
+
+            // ПРИШВИДШЕННЯ ПОЯВИ КНОПКИ ПЕРЕХОДУ (З'являється через 800мс)
+            setTimeout(() => {
+                if (!document.getElementById("reward-scene").classList.contains("hidden")) {
+                    video.classList.add("video-dimmed");
+                    cta.classList.add("cta-visible");
+                }
+            }, 800);
 
             if (girl.voice) {
                 girl.voice.load();
                 girl.voice.muted = isMuted; 
-                girl.voice.onended = () => {
-                    video.classList.add("video-dimmed");
-                    cta.classList.add("cta-visible");
-                };
                 girl.voice.play().catch(()=>{});
-            } else {
-                setTimeout(() => {
-                    video.classList.add("video-dimmed");
-                    cta.classList.add("cta-visible");
-                }, 2000);
             }
         }, 200);
     }
@@ -617,4 +640,3 @@
 </script>
 </body>
 </html>
-
