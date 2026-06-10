@@ -389,9 +389,9 @@
 <script>
     const girls = {
         mia:   { animation: "assets/MiaDuath.webm",  voice: new Audio("assets/mia.m4a") },
-        luna:  { animation: "assets/MiaDauns.webm",  voice: new Audio("assets/MiaDeans.m4a") },
+        luna:  { animation: "assets/MiaJump.webm",  voice: new Audio("assets/MiaDeans.m4a") },
         sofia: { animation: "assets/MiaMilk.webm",   voice: new Audio("assets/MiaMilk.m4a") },
-        emma:  { animation: "assets/MiaJump.webm",   voice: new Audio("assets/mia.m4a") }
+        emma:  { animation: "assets/MiaDauns.webm",   voice: new Audio("assets/mia.m4a") }
     };
 
     const outcomes = [
@@ -461,7 +461,6 @@
     }
 
     function showSectorPopup(label) {
-        // \n → <br> для багаторядкового тексту
         popupLabel.innerHTML = label.replace(/\n/g, "<br>");
         sectorPopup.classList.add("popup-visible");
     }
@@ -592,7 +591,6 @@
                 wheelContainer.style.transform  = `rotate(${finalAngle}deg)`;
             });
 
-            // Показуємо попап коли колесо майже зупинилось (через ~3.8с з 4с анімації)
             setTimeout(() => {
                 showSectorPopup(result.label);
             }, 3800);
@@ -627,7 +625,7 @@
     }
 
     function showReward(girlKey) {
-        hideSectorPopup(); // ховаємо попап
+        hideSectorPopup(); 
         document.getElementById("flash").style.opacity = "1";
         if (!isMuted) bgMusic.volume = 0.2;
 
