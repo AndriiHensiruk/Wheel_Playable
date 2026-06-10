@@ -263,6 +263,66 @@
         #mute-btn:active {
             transform: scale(0.9);
         }
+
+        /* ========== SECTOR POPUP ========== */
+        #sector-popup {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%) scale(0.7);
+            z-index: 90;
+            width: 88%;
+            background: linear-gradient(135deg, #1a0030 0%, #3d0060 50%, #1a0030 100%);
+            border: 3px solid rgba(255, 80, 200, 0.7);
+            border-radius: 22px;
+            padding: 22px 20px 18px;
+            text-align: center;
+            box-shadow:
+                0 0 40px rgba(200, 0, 255, 0.5),
+                0 0 80px rgba(200, 0, 255, 0.2),
+                inset 0 1px 0 rgba(255,255,255,0.15);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        #sector-popup.popup-visible {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        #sector-popup .popup-eyebrow {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: rgba(255, 150, 255, 0.7);
+            margin-bottom: 8px;
+        }
+        #sector-popup .popup-text {
+            font-size: clamp(18px, 5.5vw, 28px);
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            line-height: 1.2;
+            color: #ffffff;
+            text-shadow:
+                0 0 20px rgba(255, 100, 255, 0.8),
+                0 2px 4px rgba(0,0,0,0.6);
+        }
+        #sector-popup .popup-stars {
+            margin-top: 10px;
+            font-size: 18px;
+            letter-spacing: 4px;
+        }
+
+        @keyframes popupGlow {
+            0%, 100% { box-shadow: 0 0 40px rgba(200,0,255,0.5), 0 0 80px rgba(200,0,255,0.2), inset 0 1px 0 rgba(255,255,255,0.15); }
+            50%       { box-shadow: 0 0 60px rgba(255,80,200,0.8), 0 0 120px rgba(200,0,255,0.4), inset 0 1px 0 rgba(255,255,255,0.15); }
+        }
+        #sector-popup.popup-visible {
+            animation: popupGlow 1.5s ease-in-out infinite;
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
     </style>
 </head>
 <body>
@@ -307,6 +367,13 @@
             <div class="avatar-img-holder"><img src="assets/avatar2.png" /></div>
             <div class="avatar-label">Mia</div>
         </div>
+
+        <!-- SECTOR POPUP -->
+        <div id="sector-popup">
+            <div class="popup-eyebrow">🎯 You unlocked</div>
+            <div class="popup-text" id="popup-label"></div>
+            <div class="popup-stars">⭐⭐⭐</div>
+        </div>
     </div>
 
     <div id="reward-scene" class="scene hidden">
@@ -328,10 +395,10 @@
     };
 
     const outcomes = [
-        { id: "mia",   angle: 310 }, 
-        { id: "emma",  angle: 75  }, 
-        { id: "sofia", angle: 150 }, 
-        { id: "luna",  angle: 225 }  
+        { id: "mia",   angle: 310, label: "Mia spills milk\non herself"        },
+        { id: "emma",  angle: 75,  label: "Mia does a\nWild Cowgirl Dance"     },
+        { id: "sofia", angle: 150, label: "Mia Reverse\nCowgirl"               },
+        { id: "luna",  angle: 225, label: "Spicy Dance\nfrom Mia"              }
     ];
 
     const targetSectorAtTop = 0; 
@@ -353,6 +420,8 @@
     const wrapper        = document.getElementById("game-wrapper");
     const startScreen    = document.getElementById("start-screen");
     const muteBtn        = document.getElementById("mute-btn");
+    const sectorPopup    = document.getElementById("sector-popup");
+    const popupLabel     = document.getElementById("popup-label");
 
     let anchorL = {}, anchorR = {};
 
@@ -383,17 +452,22 @@
 
     function toggleMusic(event) {
         if (event) event.stopPropagation(); 
-        
         isMuted = !isMuted;
         bgMusic.muted = isMuted;
-
         for (let key in girls) {
-            if (girls[key].voice) {
-                girls[key].voice.muted = isMuted;
-            }
+            if (girls[key].voice) girls[key].voice.muted = isMuted;
         }
-
         muteBtn.innerText = isMuted ? "🔇" : "🔊";
+    }
+
+    function showSectorPopup(label) {
+        // \n → <br> для багаторядкового тексту
+        popupLabel.innerHTML = label.replace(/\n/g, "<br>");
+        sectorPopup.classList.add("popup-visible");
+    }
+
+    function hideSectorPopup() {
+        sectorPopup.classList.remove("popup-visible");
     }
 
     function startGameFromSplash() {
@@ -419,41 +493,29 @@
         dragging    = true;
         startY      = clientY;
         pullDistance = 0;
-        
-        if(tutInterval) { clearInterval(tutInterval); tutInterval = null; }
-        
+        if (tutInterval) { clearInterval(tutInterval); tutInterval = null; }
         hand.classList.add("hidden");
         arrow.classList.remove("arrow-tutorial-anim");
         wheelContainer.classList.add("spinning-continuous");
     }
 
-    // === ОНОВЛЕНІ ОБРОБНИКИ ПОДІЙ ДЛЯ СТАБІЛЬНОЇ РОБОТИ З МИШКОЮ ТА ТАЧЕМ ===
     wrapper.addEventListener("pointerdown", e => {
         if (e.target.id === "mute-btn" || e.target.closest("#mute-btn")) return;
         if (spinning || !gameStarted) return;
-        
         if (e.pointerType === 'mouse' && e.button !== 0) return;
-        
         e.preventDefault();
         startDrag(e.clientY);
-        
-        try {
-            wrapper.setPointerCapture(e.pointerId);
-        } catch(err) {
-            console.log("Pointer capture failed fallback used");
-        }
+        try { wrapper.setPointerCapture(e.pointerId); } catch(err) {}
     });
 
     wrapper.addEventListener("pointermove", e => {
         if (!dragging || !gameStarted) return;
         e.preventDefault();
-        
         if (e.clientY > startY) {
             pullDistance = Math.min(e.clientY - startY, 120);
         } else {
             pullDistance = 0;
         }
-
         arrow.style.transform = `translateY(${pullDistance}px)`;
         document.getElementById("hay-left").style.transform  = `rotate(${pullDistance / 10}deg)`;
         document.getElementById("hay-right").style.transform = `rotate(${180 - pullDistance / 10}deg)`;
@@ -463,11 +525,7 @@
     wrapper.addEventListener("pointerup", e => {
         if (!dragging) return;
         dragging = false;
-        
-        try {
-            wrapper.releasePointerCapture(e.pointerId);
-        } catch(err) {}
-        
+        try { wrapper.releasePointerCapture(e.pointerId); } catch(err) {}
         if (pullDistance > 40) fire();
         else resetArrowVisuals();
     });
@@ -475,11 +533,7 @@
     wrapper.addEventListener("pointercancel", e => {
         if (!dragging) return;
         dragging = false;
-        
-        try {
-            wrapper.releasePointerCapture(e.pointerId);
-        } catch(err) {}
-        
+        try { wrapper.releasePointerCapture(e.pointerId); } catch(err) {}
         resetArrowVisuals();
     });
 
@@ -492,7 +546,7 @@
         setTimeout(() => { 
             arrow.style.transition = "none"; 
             updateLines();
-            if(!spinning && !tutInterval && gameStarted) {
+            if (!spinning && !tutInterval && gameStarted) {
                 arrow.classList.add("arrow-tutorial-anim");
                 hand.classList.remove("hidden");
                 startTutorialLoop();
@@ -504,14 +558,12 @@
         spinning = true;
 
         let availableOutcomes = outcomes.filter(o => !unlockedGirls.includes(o.id));
-
         if (availableOutcomes.length === 0) {
             unlockedGirls = [];
             availableOutcomes = outcomes;
         }
 
         const result = availableOutcomes[Math.floor(Math.random() * availableOutcomes.length)];
-        
         unlockedGirls.push(result.id);
 
         arrow.style.transition = "transform 0.2s ease-in, opacity 0.1s 0.1s";
@@ -528,10 +580,10 @@
             wheelContainer.style.transform  = `rotate(${currentAngle}deg)`;
 
             let delta = targetSectorAtTop - result.angle - currentAngle;
-            delta = ((delta % 360) + 360) % 360;   
-            if (delta < 60) delta += 360;           
-            const extraSpins  = 1440;               
-            const finalAngle  = currentAngle + extraSpins + delta;
+            delta = ((delta % 360) + 360) % 360;
+            if (delta < 60) delta += 360;
+            const extraSpins = 1440;
+            const finalAngle = currentAngle + extraSpins + delta;
 
             createStuckArrowAt(result.angle);
 
@@ -540,7 +592,12 @@
                 wheelContainer.style.transform  = `rotate(${finalAngle}deg)`;
             });
 
-            // ПАУЗА
+            // Показуємо попап коли колесо майже зупинилось (через ~3.8с з 4с анімації)
+            setTimeout(() => {
+                showSectorPopup(result.label);
+            }, 3800);
+
+            // Перехід у reward — ховаємо попап разом з flash
             setTimeout(() => showReward(result.id), 5500);
         }, 200);
     }
@@ -549,8 +606,8 @@
         const layer = document.getElementById("stuck-arrows-layer");
         layer.innerHTML = "";
 
-        const wheelPx = wheelWrapper.offsetWidth;
-        const radiusPx = wheelPx * 0.22;
+        const wheelPx   = wheelWrapper.offsetWidth;
+        const radiusPx  = wheelPx * 0.22;
         const arrowSizePx = wheelPx * 0.26;
 
         const img = document.createElement("img");
@@ -558,11 +615,11 @@
         img.className = "stuck-arrow";
 
         Object.assign(img.style, {
-            position:        "absolute",
-            width:           arrowSizePx + "px",
-            height:          "auto", 
-            left:            "50%",
-            top:             "50%",
+            position:  "absolute",
+            width:     arrowSizePx + "px",
+            height:    "auto", 
+            left:      "50%",
+            top:       "50%",
             transform: `translate(-50%, 0%) rotate(${sectorAngle}deg) translateY(-${radiusPx}px) rotate(180deg)`
         });
 
@@ -570,6 +627,7 @@
     }
 
     function showReward(girlKey) {
+        hideSectorPopup(); // ховаємо попап
         document.getElementById("flash").style.opacity = "1";
         if (!isMuted) bgMusic.volume = 0.2;
 
@@ -587,8 +645,6 @@
             document.getElementById("flash").style.opacity = "0";
 
             video.load();
-            
-            // ЕФЕКТ СЛОВМО (0.6х)
             video.playbackRate = 0.6;
             video.play();
            
@@ -611,6 +667,7 @@
         const video = document.getElementById("girl-animation");
         const cta   = document.getElementById("cta-btn");
 
+        hideSectorPopup();
         if (!isMuted) bgMusic.volume = 1.0;
         video.pause(); video.src = "";
         video.classList.remove("video-dimmed");
@@ -645,15 +702,8 @@
         }, 16);
     }
 
-    window.onload = () => {
-        calcAnchors();
-        updateLines();
-    };
-
-    window.onresize = () => {
-        calcAnchors();
-        updateLines();
-    };
+    window.onload = () => { calcAnchors(); updateLines(); };
+    window.onresize = () => { calcAnchors(); updateLines(); };
 </script>
 </body>
 </html>
